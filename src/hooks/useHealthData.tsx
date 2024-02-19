@@ -18,8 +18,9 @@ const permissions: HealthKitPermissions = {
       AppleHealthKit.Constants.Permissions.Steps,
       AppleHealthKit.Constants.Permissions.FlightsClimbed,
       AppleHealthKit.Constants.Permissions.DistanceWalkingRunning,
+      AppleHealthKit.Constants.Permissions.HeartRate,
     ],
-    write: [],
+    write: [AppleHealthKit.Constants.Permissions.Steps],
   },
 };
 
@@ -33,25 +34,25 @@ const useHealthData = (date: Date) => {
   useEffect(() => {
     if (Platform.OS !== 'ios') {
       return;
+    }else{
+     AppleHealthKit.isAvailable((err, isAvailable) => {
+       if (err) {
+         console.log("Error checking availability");
+         return;
+       }
+       if (!isAvailable) {
+         console.log("Apple Health not available");
+         return;
+       }
+       AppleHealthKit.initHealthKit(permissions, (err) => {
+         if (err) {
+           console.log("Error getting permissions");
+           return;
+         }
+         setHasPermission(true);
+       });
+     }); 
     }
-
-    AppleHealthKit.isAvailable((err, isAvailable) => {
-      if (err) {
-        console.log('Error checking availability');
-        return;
-      }
-      if (!isAvailable) {
-        console.log('Apple Health not available');
-        return;
-      }
-      AppleHealthKit.initHealthKit(permissions, (err) => {
-        if (err) {
-          console.log('Error getting permissions');
-          return;
-        }
-        setHasPermission(true);
-      });
-    });
   }, []);
 
   useEffect(() => {
@@ -61,7 +62,7 @@ const useHealthData = (date: Date) => {
 
     const options: HealthInputOptions = {
       date: date.toISOString(),
-      includeManuallyAdded: false,
+      includeManuallyAdded: true,
     };
 
     AppleHealthKit.getStepCount(options, (err, results) => {
@@ -87,7 +88,15 @@ const useHealthData = (date: Date) => {
       }
       setDistance(results.value);
     });
+
+    AppleHealthKit.getHeartRateSamples(options, (err, results) =>{
+      if(err){
+        console.log('Error getting Heart Rate:', err);
+        return;
+      }
+    });
   }, [hasPermissions, date]);
+
 
   // Android - Health Connect
   const readSampleData = async () => {
@@ -102,6 +111,8 @@ const useHealthData = (date: Date) => {
       { accessType: 'read', recordType: 'Steps' },
       { accessType: 'read', recordType: 'Distance' },
       { accessType: 'read', recordType: 'FloorsClimbed' },
+      { accessType: 'read', recordType: 'HeartRate'},
+      { accessType: 'write', recordType: 'Steps'}
     ]);
 
     const timeRangeFilter: TimeRangeFilter = {
